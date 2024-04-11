@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yellow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            padding: 10px 0;
+            text-align: center;
+        }
+        #urlInput {
+            width: 80%;
+            padding: 10px;
+            margin: 10px auto;
+            display: block;
+        }
+        #goButton {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            display: block;
+            margin: 10px auto;
+        }
+        #goButton:hover {
+            background-color: #45a049;
+        }
+        #progressText {
+            text-align: center;
+            margin: 20px 0;
+        }
+        #sigmaFrame, #websiteHTML{
+            width: 100%;
+            height: 500px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Yellow</h1>
+        <input type="text" id="urlInput" placeholder="Enter URL">
+        <button id="goButton">Go</button>
+    </header>
+    <div id="version"></div>
+    <div id="progressText"></div>
+    <iframe id="sigmaFrame"></iframe>
+    <div id="websiteHTML"></div>
+<script>
+
+document.getElementById('goButton').addEventListener('click', function() {
+    var url = document.getElementById('urlInput').value.trim();
+    if (url !== '') {
+        loadPage(url, "https://api.allorigins.win/get?url=");
+    } else {
+        alert('Please enter a valid URL');
+    }
+});
+
+function loadPage(url, sigmaUrl) {
+    document.getElementById('sigmaFrame').src = 'about:blank'; // reset iframe content
+    var fullUrl = sigmaUrl + encodeURIComponent(url);
+    var progressText = document.getElementById('progressText');
+    progressText.innerText = 'Fetching URL content';
+    var dots = 0;
+    var intervalId = setInterval(function() {
+        dots = (dots + 1) % 4;
+        progressText.innerText = 'Fetching URL content' + '.'.repeat(dots);
+    }, 500);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', fullUrl, true);
+    xhr.responseType = 'json';
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+            clearInterval(intervalId);
+            if (xhr.status === 200) {
+                var data = xhr.response;
+                var THWgsigma = document.getElementById('websiteHTML');
+                var doc = document.getElementById('sigmaFrame').contentDocument;
+                doc.open();
+
+                var parser = new DOMParser();
+                var docContent = parser.parseFromString(data.contents, "text/html");
+
+                var links = docContent.querySelectorAll('a');
+                links.forEach(function(link) {
+                    var href = link.getAttribute('href');
+                    if (href && !href.startsWith('http')) {
+                        link.setAttribute('href', new URL(href, fullUrl).href);
+                    }
+                });
+
+                doc.write(docContent.documentElement.outerHTML);
+                doc.close();
+
+                var scripts = docContent.querySelectorAll('script[src]');
+                scripts.forEach(function(script) {
+                    var src = script.getAttribute('src');
+                    var theGoody = '';
+                        theGoody = fullUrl + '/' + src;
+                        script.remove(); // remove the original script tag
+                        // fetch the script content and embed it directly
+                        fetchScriptContent(theGoody)
+                            .then(scriptContent => {
+                                var script = document.createElement('script');
+                                script.onload = function() {
+                                alert("Script loaded and ready");
+                                };
+                                script.src = scriptContent.content;
+                                doc.getElementsByTagName('head')[0].appendChild(script);
+                            })
+                            .catch(error => console.error('Error fetching script:', error));
+                });
+
+                var images = docContent.querySelectorAll('img[src]');
+                images.forEach(function(image) {
+                    var src = image.getAttribute('src');
+                    var theGoody = '';
+                    theGoody = url + '/' + src;
+                    image.setAttribute('src', theGoody)
+                });
+
+                THWgsigma.innerText = docContent.documentElement.outerHTML;
+
+                setTimeout(function() {
+                    progressText.innerText = 'Done!';
+                }, 1000);
+            } else {
+                console.error('Error fetching content:', xhr.status);
+                progressText.innerText = 'Error fetching content, error: ' + xhr.status;
+            }
+        }
+    };
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.send();
+}
+
+function fetchScriptContent(scriptUrl) {
+    return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('no-cors', scriptUrl, true);
+        xhr.responseType = 'text';
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    resolve(xhr.responseText);
+                } else {
+                    reject(xhr.status);
+                }
+            }
+        };
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.send();
+    });
+}
+
+</script>
+
+</body>
+</html>
